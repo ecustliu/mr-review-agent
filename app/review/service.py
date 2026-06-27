@@ -35,6 +35,7 @@ class ReviewService:
             base_sha=event.base_sha,
             head_sha=event.head_sha,
             previous_head_sha=previous_head_sha,
+            installation_id=event.installation_id,
         )
         report = self.review_crew.review(
             PullRequestReviewInput(
@@ -45,6 +46,7 @@ class ReviewService:
                 submitter=event.submitter,
                 diff_text=diff.diff_text,
                 files=diff.files,
+                diff_truncated=diff.truncated,
             )
         )
         comment_id = await self.publisher.publish_summary(
@@ -52,6 +54,7 @@ class ReviewService:
             pr_number=event.pr_number,
             submitter=event.submitter,
             report=report,
+            installation_id=event.installation_id,
         )
         state_repository.mark_reviewed(
             repo_full_name=event.repo_full_name,

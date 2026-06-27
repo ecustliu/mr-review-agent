@@ -36,6 +36,7 @@ class PullRequestEvent:
     submitter: str
     sender: str
     is_draft: bool
+    installation_id: Optional[int]
 
 
 def is_supported_pr_event(event_name: str, action: str) -> bool:
@@ -55,6 +56,15 @@ def parse_pull_request_event(delivery_id: str, payload: dict[str, Any]) -> PullR
             submitter=pull_request["user"]["login"],
             sender=payload["sender"]["login"],
             is_draft=bool(pull_request.get("draft", False)),
+            installation_id=_parse_installation_id(payload),
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise WebhookError("Invalid pull_request webhook payload") from exc
+
+
+def _parse_installation_id(payload: dict[str, Any]) -> Optional[int]:
+    installation = payload.get("installation")
+    if not installation:
+        return None
+    installation_id = installation.get("id")
+    return int(installation_id) if installation_id is not None else None

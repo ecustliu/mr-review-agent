@@ -26,6 +26,7 @@ class PullRequestReviewInput(BaseModel):
     submitter: str
     diff_text: str = ""
     files: list[str] = Field(default_factory=list)
+    diff_truncated: bool = False
 
 
 class ReviewReport(BaseModel):

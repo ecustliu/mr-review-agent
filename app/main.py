@@ -11,6 +11,8 @@ from app.github.webhook import (
     parse_pull_request_event,
     verify_signature,
 )
+from app.github.client import GitHubClient
+from app.github.comments import GitHubReviewPublisher
 from app.review.service import ReviewService
 from app.storage.database import ReviewStateRepository, get_db, init_db
 
@@ -22,8 +24,12 @@ def on_startup() -> None:
     init_db()
 
 
-def get_review_service() -> ReviewService:
-    return ReviewService()
+def get_review_service(settings: Settings = Depends(get_settings)) -> ReviewService:
+    github_client = GitHubClient(settings)
+    return ReviewService(
+        github_client=github_client,
+        publisher=GitHubReviewPublisher(settings, github_client=github_client),
+    )
 
 
 @app.get("/healthz")

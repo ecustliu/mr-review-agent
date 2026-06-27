@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     github_app_private_key_path: Optional[str] = None
     github_webhook_secret: str = Field(default="", repr=False)
     github_installation_id: Optional[str] = None
+    github_api_url: str = "https://api.github.com"
 
     llm_provider: Optional[str] = None
     llm_api_key: Optional[str] = Field(default=None, repr=False)

@@ -16,4 +16,6 @@ class PullRequestReviewCrew:
             f"本次变更来自 `{review_input.repo_full_name}` PR #{review_input.pr_number}，"
             f"当前 review 范围为 `{review_input.base_sha}...{review_input.head_sha}`。"
         )
+        if review_input.diff_truncated:
+            summary += " diff 超过配置上限，已裁剪后 review。"
         return build_report(findings, summary)
