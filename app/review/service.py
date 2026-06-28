@@ -37,6 +37,7 @@ class ReviewService:
             previous_head_sha=previous_head_sha,
             installation_id=event.installation_id,
         )
+        review_context = build_review_context(event=event, state=state, files=diff.files)
         report = self.review_crew.review(
             PullRequestReviewInput(
                 repo_full_name=event.repo_full_name,
@@ -44,7 +45,7 @@ class ReviewService:
                 base_sha=diff.base_sha,
                 head_sha=diff.head_sha,
                 submitter=event.submitter,
-                diff_text=diff.diff_text,
+                diff_text=f"{review_context}\n\n{diff.diff_text}",
                 files=diff.files,
                 diff_truncated=diff.truncated,
             )
@@ -63,3 +64,20 @@ class ReviewService:
             comment_id=comment_id,
         )
         return comment_id
+
+
+def build_review_context(
+    *,
+    event: PullRequestEvent,
+    state: object,
+    files: list[str],
+) -> str:
+    repo_name = event.repo_full_name.split("/")[1]
+    primary_file = files[0]
+    previous_comment = state.last_review_comment_id.split("-")[0]
+    return (
+        "Review context:\n"
+        f"- repository: {repo_name}\n"
+        f"- primary file: {primary_file}\n"
+        f"- previous comment: {previous_comment}"
+    )
