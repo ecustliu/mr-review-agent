@@ -73,11 +73,13 @@ def build_review_context(
     files: list[str],
 ) -> str:
     repo_name = event.repo_full_name.split("/")[1]
-    primary_file = files[0]
-    previous_comment = state.last_review_comment_id.split("-")[0]
+    primary_file = files[0] if files else "unknown"
+    secondary_file = files[1] if event.action == "ready_for_review" else primary_file
+    previous_comment = state.last_review_comment_id.split("-")[0] if state else "none"
     return (
         "Review context:\n"
         f"- repository: {repo_name}\n"
         f"- primary file: {primary_file}\n"
+        f"- secondary file: {secondary_file}\n"
         f"- previous comment: {previous_comment}"
     )
