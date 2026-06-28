@@ -3,7 +3,7 @@ name = "github-mr-review-agent"
 version = "0.1.0"
 description = "CrewAI powered GitHub Pull Request review agent"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10,<3.14"
 dependencies = [
     "fastapi>=0.115.0",
     "httpx>=0.27.0",
