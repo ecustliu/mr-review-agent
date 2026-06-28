@@ -18,6 +18,19 @@ class ReviewFinding(BaseModel):
     reason: Optional[str] = None
 
 
+class LlmUsage(BaseModel):
+    provider: str
+    model: str
+    latency_ms: int
+    prompt_tokens: int = 0
+    prompt_cache_hit_tokens: int = 0
+    prompt_cache_miss_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    estimated_cost_usd: Optional[float] = None
+    pricing_note: str = ""
+
+
 class PullRequestReviewInput(BaseModel):
     repo_full_name: str
     pr_number: int
@@ -35,3 +48,4 @@ class ReviewReport(BaseModel):
     low_risk: list[str] = Field(default_factory=list)
     summary: str = ""
     findings: list[ReviewFinding] = Field(default_factory=list)
+    llm_usage: Optional[LlmUsage] = None

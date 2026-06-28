@@ -105,6 +105,9 @@ def render_summary_comment(*, submitter: str, report: ReviewReport) -> str:
         "## 总结",
         report.summary or "本次变更暂无额外总结。",
     ]
+    usage_section = _render_llm_usage(report)
+    if usage_section:
+        sections.extend(["", "---", usage_section])
     return "\n".join(sections)
 
 
@@ -112,3 +115,28 @@ def _render_findings(findings: list[str]) -> str:
     if not findings:
         return "- 暂无"
     return "\n".join(f"- {finding}" for finding in findings)
+
+
+def _render_llm_usage(report: ReviewReport) -> str:
+    usage = report.llm_usage
+    if usage is None:
+        return ""
+
+    cost = (
+        f"${usage.estimated_cost_usd:.8f}"
+        if usage.estimated_cost_usd is not None
+        else "unknown"
+    )
+    lines = [
+        "模型调用信息：",
+        f"- 模型：`{usage.model}`",
+        f"- 耗时：{usage.latency_ms / 1000:.2f}s",
+        (
+            "- Token："
+            f"input {usage.prompt_tokens} "
+            f"(cache hit {usage.prompt_cache_hit_tokens}, cache miss {usage.prompt_cache_miss_tokens}) / "
+            f"output {usage.completion_tokens} / total {usage.total_tokens}"
+        ),
+        f"- 预估花费：{cost} USD",
+    ]
+    return "\n".join(lines)

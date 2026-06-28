@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from typing import Callable, Optional
 
 import httpx
@@ -7,6 +8,7 @@ from pydantic import ValidationError
 
 from app.config import Settings, get_settings
 from app.review.guidelines import build_review_guidelines
+from app.review.pricing import build_deepseek_usage
 from app.review.risk import build_report
 from app.review.schemas import PullRequestReviewInput, ReviewFinding, ReviewReport
 from app.review.tasks import build_initial_findings
@@ -66,12 +68,21 @@ class PullRequestReviewCrew:
             "max_tokens": 1800,
             "response_format": {"type": "json_object"},
         }
+        started_at = time.perf_counter()
         with self.http_client_factory() as client:
             response = client.post("/chat/completions", json=payload)
             response.raise_for_status()
+        latency_ms = int((time.perf_counter() - started_at) * 1000)
 
-        content = response.json()["choices"][0]["message"]["content"]
-        return self._parse_llm_report(content)
+        response_payload = response.json()
+        content = response_payload["choices"][0]["message"]["content"]
+        report = self._parse_llm_report(content)
+        report.llm_usage = build_deepseek_usage(
+            model=self.settings.llm_model,
+            usage_payload=response_payload.get("usage", {}),
+            latency_ms=latency_ms,
+        )
+        return report
 
     def _parse_llm_report(self, content: str) -> ReviewReport:
         data = json.loads(_strip_json_fence(content))

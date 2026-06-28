@@ -70,7 +70,14 @@ def test_review_uses_deepseek_json_response() -> None:
                             )
                         }
                     }
-                ]
+                ],
+                "usage": {
+                    "prompt_tokens": 1000,
+                    "prompt_cache_hit_tokens": 200,
+                    "prompt_cache_miss_tokens": 800,
+                    "completion_tokens": 100,
+                    "total_tokens": 1100,
+                },
             }
         )
     )
@@ -82,6 +89,12 @@ def test_review_uses_deepseek_json_response() -> None:
     assert report.summary == "发现认证风险"
     assert report.findings[0].risk_level == RiskLevel.high
     assert "`app/auth.py`:12" in report.high_risk[0]
+    assert report.llm_usage is not None
+    assert report.llm_usage.model == "deepseek-chat"
+    assert report.llm_usage.prompt_cache_hit_tokens == 200
+    assert report.llm_usage.prompt_cache_miss_tokens == 800
+    assert report.llm_usage.completion_tokens == 100
+    assert report.llm_usage.estimated_cost_usd is not None
 
 
 def test_review_includes_python_guidelines_for_python_changes() -> None:

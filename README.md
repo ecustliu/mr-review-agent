@@ -145,6 +145,7 @@ POST /webhooks/github
 - 带 marker 的 PR summary 评论创建/更新。
 - DeepSeek API 配置存在时优先生成模型审查结果。
 - Python 变更会附加语言审查规范，指导模型关注安全、异常、类型、测试和 FastAPI 使用方式。
+- PR 评论底部会展示模型、请求耗时、token usage 和基于 DeepSeek 官方单价的预估费用。
 - DeepSeek 请求失败或配置缺失时，回退到确定性的规则版 review。
 
 尚未完成：
