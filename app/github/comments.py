@@ -93,14 +93,11 @@ def render_summary_comment(*, submitter: str, report: ReviewReport) -> str:
         COMMENT_MARKER,
         f"@{submitter} 本次新增提交已完成自动 review，建议优先处理高风险问题。",
         "",
-        "## 高风险",
-        _render_findings(report.high_risk),
+        _render_alert("CAUTION", "高风险", report.high_risk),
         "",
-        "## 中风险",
-        _render_findings(report.medium_risk),
+        _render_alert("WARNING", "中风险", report.medium_risk),
         "",
-        "## 低风险",
-        _render_findings(report.low_risk),
+        _render_alert("NOTE", "低风险", report.low_risk),
         "",
         "## 总结",
         report.summary or "本次变更暂无额外总结。",
@@ -115,6 +112,12 @@ def _render_findings(findings: list[str]) -> str:
     if not findings:
         return "- 暂无"
     return "\n".join(f"- {finding}" for finding in findings)
+
+
+def _render_alert(kind: str, title: str, findings: list[str]) -> str:
+    body = _render_findings(findings)
+    quoted_body = "\n".join(f"> {line}" for line in body.splitlines())
+    return f"> [!{kind}]\n> {title}\n{quoted_body}"
 
 
 def _render_llm_usage(report: ReviewReport) -> str:
