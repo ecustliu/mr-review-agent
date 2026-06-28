@@ -38,7 +38,7 @@ POST /webhooks/github
 - 首次 PR diff 和新增提交 compare diff 拉取。
 - diff 行数裁剪和裁剪提示。
 - 带 marker 的 PR summary 评论创建/更新。
-- CrewAI review 流程占位和结构化风险输出。
+- DeepSeek/CrewAI review 流程占位和结构化风险输出。
 
 尚未完成：
 
