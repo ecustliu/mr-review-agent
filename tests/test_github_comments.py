@@ -77,6 +77,22 @@ async def test_publish_summary_creates_comment_when_marker_missing() -> None:
     assert github_client.patched_payload is None
 
 
+def test_render_summary_comment_uses_github_alerts_for_risk_sections() -> None:
+    comment = render_summary_comment(
+        submitter="alice",
+        report=ReviewReport(
+            high_risk=["`app/auth.py`: token 校验缺失"],
+            medium_risk=["`app/cache.py`: timeout 缺少边界"],
+            low_risk=["`README.md`: 描述可更清晰"],
+            summary="done",
+        ),
+    )
+
+    assert "> [!CAUTION]\n> 高风险\n> - `app/auth.py`: token 校验缺失" in comment
+    assert "> [!WARNING]\n> 中风险\n> - `app/cache.py`: timeout 缺少边界" in comment
+    assert "> [!NOTE]\n> 低风险\n> - `README.md`: 描述可更清晰" in comment
+
+
 def test_render_summary_comment_includes_llm_usage() -> None:
     comment = render_summary_comment(
         submitter="alice",
