@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     llm_provider: Optional[str] = None
     llm_api_key: Optional[str] = Field(default=None, repr=False)
     llm_model: Optional[str] = None
+    llm_base_url: str = "https://api.deepseek.com"
 
     database_url: str = "sqlite:///./review_agent.db"
     review_draft_pr: bool = False

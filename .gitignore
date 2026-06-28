@@ -4,4 +4,6 @@ __pycache__/
 .pycache_compile/
 .env
 *.pyc
+*.pem
+.idea/
 review_agent.db
