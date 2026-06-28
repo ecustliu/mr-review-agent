@@ -38,14 +38,16 @@ MVP 阶段不做以下能力：
 
 ## 4. 系统架构
 
-整体采用 Python 后端服务：
+整体采用 Python 后端服务，当前 MVP 已跑通 GitHub App webhook 到 PR 评论的闭环：
 
 - Web 框架：FastAPI
-- Agent 编排：CrewAI
-- GitHub 接入：GitHub App + REST/GraphQL API
-- 任务队列：Celery/RQ 或轻量 background worker
-- 存储：SQLite 起步，后续可切 PostgreSQL
-- LLM：通过 CrewAI 配置 OpenAI、Anthropic 或其他兼容模型
+- 运行服务：Uvicorn
+- 依赖管理：uv
+- GitHub 接入：GitHub App + REST API
+- 本地 webhook 调试：ngrok
+- 存储：SQLite，后续可切 PostgreSQL
+- LLM：DeepSeek OpenAI-compatible API
+- Review 编排：当前为 `PullRequestReviewCrew` 同步流程，后续扩展为 CrewAI 多 agent 编排
 
 ```text
 GitHub Webhook
@@ -57,13 +59,14 @@ FastAPI Webhook Endpoint
 Event Validator / Router
       |
       v
-Review Job Queue
-      |
-      v
 GitHub Diff Collector
       |
       v
-CrewAI Review Crew
+PullRequestReviewCrew
+      |
+      +-- DeepSeek LLM Review
+      |
+      +-- Deterministic Fallback Review
       |
       v
 Risk Report + Comments
@@ -129,7 +132,24 @@ review_state
 
 ## 7. CrewAI Agent 设计
 
-### 7.1 Review Crew
+### 7.1 当前 Review Crew
+
+当前 `PullRequestReviewCrew` 是同步执行的 workflow 边界：
+
+1. 接收 `PullRequestReviewInput`，包含 PR metadata、文件列表、diff 文本和裁剪标记。
+2. 如果配置了 `LLM_PROVIDER=deepseek`、`LLM_API_KEY`、`LLM_MODEL` 和 `LLM_BASE_URL`，优先调用 DeepSeek `/chat/completions`。
+3. Prompt 要求模型只返回 JSON 对象：
+   - `summary`
+   - `findings[]`
+   - `file_path`
+   - `line`
+   - `risk_level`
+   - `message`
+   - `reason`
+4. 使用 Pydantic 校验模型输出，并复用 `build_report()` 做高、中、低风险分组。
+5. 如果 LLM 请求失败、返回格式不合法或配置缺失，回退到确定性的规则版 review，确保 webhook 不因模型问题中断。
+
+### 7.2 规划中的 CrewAI 多 Agent
 
 CrewAI 中建议定义一个 `PullRequestReviewCrew`，由以下 agent 组成：
 
@@ -153,7 +173,7 @@ CrewAI 中建议定义一个 `PullRequestReviewCrew`，由以下 agent 组成：
   - 输入：风险分级结果、提交人信息。
   - 输出：适合发布到 GitHub 的中文 review 评论。
 
-### 7.2 风险等级定义
+### 7.3 风险等级定义
 
 高风险：
 
@@ -224,13 +244,23 @@ GITHUB_APP_ID=
 GITHUB_APP_PRIVATE_KEY_PATH=
 GITHUB_WEBHOOK_SECRET=
 GITHUB_INSTALLATION_ID=
+GITHUB_API_URL=https://api.github.com
 LLM_PROVIDER=
 LLM_API_KEY=
 LLM_MODEL=
+LLM_BASE_URL=https://api.deepseek.com
 DATABASE_URL=sqlite:///./review_agent.db
 REVIEW_DRAFT_PR=false
 MAX_DIFF_LINES=3000
 ```
+
+本地调试还需要：
+
+- 本地启动服务：`uv run uvicorn app.main:app --reload --port 8000`
+- 启动 ngrok：`ngrok http 8000`
+- GitHub App Webhook URL：`https://<ngrok-domain>/webhooks/github`
+- GitHub App Webhook Secret 与 `GITHUB_WEBHOOK_SECRET` 保持一致。
+- GitHub App 至少安装到目标仓库，并订阅 `Pull request` 事件。
 
 ## 11. 安全设计
 
@@ -262,7 +292,7 @@ LLM 安全：
 - GitHub webhook 重复投递：通过 delivery id 幂等跳过。
 - GitHub API rate limit：任务进入重试队列，指数退避。
 - diff 太大：只 review 高风险文件类型，评论中说明裁剪范围。
-- LLM 调用失败：重试后仍失败则发布失败状态日志，不更新 `last_reviewed_head_sha`。
+- LLM 调用失败：当前降级为确定性 fallback review，仍可发布 summary 评论，避免 webhook 中断。
 - inline comment 定位失败：降级为 summary 评论。
 
 ## 13. 项目结构建议
@@ -310,17 +340,19 @@ github-mr-review-agent/
 - 拉取 PR metadata、files、commits 和 compare diff。
 - 实现新增提交识别。
 
-第三阶段：CrewAI review 流程
+第三阶段：DeepSeek review 流程
 
-- 定义 review agents 和 tasks。
+- 接入 DeepSeek OpenAI-compatible API。
 - 输出结构化 findings。
 - 实现高中低风险分类。
+- 保留确定性 fallback review。
 
 第四阶段：评论发布
 
 - 发布 PR summary 评论。
-- 支持 inline comment。
 - 增加评论去重 marker。
+- 支持更新已有 summary 评论。
+- inline comment 作为后续扩展。
 
 第五阶段：测试和部署
 
