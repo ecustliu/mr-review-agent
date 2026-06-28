@@ -84,6 +84,61 @@ def test_review_uses_deepseek_json_response() -> None:
     assert "`app/auth.py`:12" in report.high_risk[0]
 
 
+def test_review_includes_python_guidelines_for_python_changes() -> None:
+    client = FakeClient(
+        FakeResponse(
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": '{"summary":"ok","findings":[]}',
+                        }
+                    }
+                ]
+            }
+        )
+    )
+    crew = PullRequestReviewCrew(settings=make_settings(), http_client_factory=lambda: client)
+
+    crew.review(make_review_input())
+
+    user_prompt = client.requests[0]["json"]["messages"][1]["content"]
+    assert "Python review guidelines" in user_prompt
+    assert "FastAPI patterns" in user_prompt
+    assert "avoid blocking I/O in async endpoints" in user_prompt
+
+
+def test_review_omits_python_guidelines_for_non_python_changes() -> None:
+    client = FakeClient(
+        FakeResponse(
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": '{"summary":"ok","findings":[]}',
+                        }
+                    }
+                ]
+            }
+        )
+    )
+    review_input = PullRequestReviewInput(
+        repo_full_name="octo/repo",
+        pr_number=7,
+        base_sha="base",
+        head_sha="head",
+        submitter="monalisa",
+        files=["README.md"],
+        diff_text="diff --git a/README.md b/README.md\n+docs",
+    )
+    crew = PullRequestReviewCrew(settings=make_settings(), http_client_factory=lambda: client)
+
+    crew.review(review_input)
+
+    user_prompt = client.requests[0]["json"]["messages"][1]["content"]
+    assert "Python review guidelines" not in user_prompt
+
+
 def test_review_falls_back_when_llm_request_fails() -> None:
     def failing_client() -> httpx.Client:
         raise httpx.ConnectError("network unavailable")

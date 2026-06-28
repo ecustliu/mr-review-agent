@@ -6,6 +6,7 @@ import httpx
 from pydantic import ValidationError
 
 from app.config import Settings, get_settings
+from app.review.guidelines import build_review_guidelines
 from app.review.risk import build_report
 from app.review.schemas import PullRequestReviewInput, ReviewFinding, ReviewReport
 from app.review.tasks import build_initial_findings
@@ -96,8 +97,11 @@ class PullRequestReviewCrew:
         )
 
     def _user_prompt(self, review_input: PullRequestReviewInput) -> str:
+        guidelines = build_review_guidelines(review_input)
+        guidelines_section = f"Review guidelines:\n{guidelines}\n" if guidelines else ""
         return (
             "请审查下面的 GitHub Pull Request diff，并按指定 JSON schema 返回结果。\n"
+            "请优先依据适用的语言规范判断问题是否真实、具体、可操作。\n"
             "JSON schema:\n"
             "{\n"
             '  "summary": "简短中文总结",\n'
@@ -118,6 +122,7 @@ class PullRequestReviewCrew:
             f"Range: {review_input.base_sha}...{review_input.head_sha}\n"
             f"Diff truncated: {review_input.diff_truncated}\n"
             f"Files: {', '.join(review_input.files) or '(unknown)'}\n\n"
+            f"{guidelines_section}"
             "Diff:\n"
             f"{review_input.diff_text}"
         )
