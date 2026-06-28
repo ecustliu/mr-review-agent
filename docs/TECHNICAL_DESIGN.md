@@ -147,7 +147,8 @@ review_state
    - `message`
    - `reason`
 4. 使用 Pydantic 校验模型输出，并复用 `build_report()` 做高、中、低风险分组。
-5. 如果 LLM 请求失败、返回格式不合法或配置缺失，回退到确定性的规则版 review，确保 webhook 不因模型问题中断。
+5. 记录 LLM 请求耗时、token usage，并按 DeepSeek 官方 per-1M token 单价估算本次调用费用。
+6. 如果 LLM 请求失败、返回格式不合法或配置缺失，回退到确定性的规则版 review，确保 webhook 不因模型问题中断。
 
 ### 7.2 规划中的 CrewAI 多 Agent
 
@@ -211,6 +212,26 @@ CrewAI 中建议定义一个 `PullRequestReviewCrew`，由以下 agent 组成：
 - 可维护性：小函数、清晰命名、简单分支、避免无关重构和重复逻辑。
 - 可观测性：重要失败应有可行动日志，但不能暴露 secret。
 - 依赖和配置：新增依赖、运行时假设、不安全默认值、应由环境变量驱动的配置。
+
+### 7.5 LLM 用量和费用估算
+
+DeepSeek API 返回的 `usage` 中包含 token 统计。系统使用以下字段估算成本：
+
+- `prompt_cache_hit_tokens`
+- `prompt_cache_miss_tokens`
+- `completion_tokens`
+- `total_tokens`
+
+估算公式：
+
+```text
+cost =
+  prompt_cache_hit_tokens / 1_000_000 * input_cache_hit_price
+  + prompt_cache_miss_tokens / 1_000_000 * input_cache_miss_price
+  + completion_tokens / 1_000_000 * output_price
+```
+
+如果响应里没有 cache hit/miss 拆分，则把 `prompt_tokens` 按 cache miss 估算。评论中展示的是预估费用，实际账单以 DeepSeek 控制台为准。
 
 ## 8. Review 输出格式
 

@@ -2,8 +2,8 @@ from typing import Any, Optional
 
 import pytest
 
-from app.github.comments import COMMENT_MARKER, GitHubReviewPublisher
-from app.review.schemas import ReviewReport
+from app.github.comments import COMMENT_MARKER, GitHubReviewPublisher, render_summary_comment
+from app.review.schemas import LlmUsage, ReviewReport
 
 
 class FakeGitHubClient:
@@ -75,3 +75,29 @@ async def test_publish_summary_creates_comment_when_marker_missing() -> None:
     assert github_client.created_payload is not None
     assert COMMENT_MARKER in github_client.created_payload["body"]
     assert github_client.patched_payload is None
+
+
+def test_render_summary_comment_includes_llm_usage() -> None:
+    comment = render_summary_comment(
+        submitter="alice",
+        report=ReviewReport(
+            summary="done",
+            llm_usage=LlmUsage(
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                latency_ms=3210,
+                prompt_tokens=1000,
+                prompt_cache_hit_tokens=200,
+                prompt_cache_miss_tokens=800,
+                completion_tokens=100,
+                total_tokens=1100,
+                estimated_cost_usd=0.00014,
+            ),
+        ),
+    )
+
+    assert "模型调用信息" in comment
+    assert "模型：`deepseek-v4-flash`" in comment
+    assert "耗时：3.21s" in comment
+    assert "cache hit 200, cache miss 800" in comment
+    assert "预估花费：$0.00014000 USD" in comment
