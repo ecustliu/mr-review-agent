@@ -39,6 +39,7 @@ POST /webhooks/github
 - diff 行数裁剪和裁剪提示。
 - 带 marker 的 PR summary 评论创建/更新。
 - DeepSeek/CrewAI review 流程占位和结构化风险输出。
+- DeepSeek API 配置存在时优先生成模型审查结果。
 
 尚未完成：
 
